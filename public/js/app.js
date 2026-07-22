@@ -110,6 +110,7 @@
             <h3>Welcome aboard.</h3>
             <p class="sub" style="margin-top:10px">Thank you for joining the Navalha &amp; Co community. We'll keep you updated with exclusive offers, grooming advice, and news.</p>
           </div>
+          <div style="text-align:center;margin-top:18px;padding-top:14px;border-top:1px solid var(--card-line);font-size:.66rem;letter-spacing:.08em;color:var(--muted)">Powered by <a href="https://arca-chatbot-production.up.railway.app/site/" target="_blank" rel="noopener" style="color:var(--gold-light)">ARCA Studio</a></div>
         </div>
       </div>`;
     document.body.appendChild(wrap);
