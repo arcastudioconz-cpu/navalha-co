@@ -87,6 +87,7 @@
           <button class="x" id="chatClose" aria-label="Close chat">&times;</button></div>
         <div class="chat-body" id="chatBody"></div>
         <div class="chat-quick" id="chatQuick"></div>
+        <div style="text-align:center;padding:6px 0;font-size:.66rem;letter-spacing:.08em;color:var(--muted);border-top:1px solid var(--card-line)">Powered by <a href="https://arca-chatbot-production.up.railway.app/site/" target="_blank" rel="noopener" style="color:var(--gold-light)">ARCA Studio</a></div>
         <form class="chat-input" id="chatForm">
           <input id="chatInput" placeholder="Ask about booking, services\u2026" autocomplete="off" />
           <button type="submit" aria-label="Send">&rarr;</button></form>
