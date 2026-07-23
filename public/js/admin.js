@@ -35,7 +35,7 @@ document.addEventListener('na:ready', () => {
 
   /* ---------- DASHBOARD SHELL ---------- */
   const TABS = [['today', 'Today'], ['appointments', 'Appointments'], ['availability', 'Availability'],
-  ['services', 'Services'], ['newsletter', 'Newsletter'], ['reviews', 'Reviews'], ['settings', 'Settings']];
+  ['services', 'Services'], ['gallery', 'Gallery'], ['newsletter', 'Newsletter'], ['reviews', 'Reviews'], ['settings', 'Settings']];
 
   function dashboard(active = 'today') {
     app.innerHTML = `
@@ -59,7 +59,7 @@ document.addEventListener('na:ready', () => {
       b.style.color = on ? 'var(--gold-light)' : 'var(--muted)';
     });
     ({ today: renderToday, appointments: renderAppointments, availability: renderAvailability,
-       services: renderServices, newsletter: renderNewsletter, reviews: renderReviews, settings: renderSettings }[tab])();
+       services: renderServices, gallery: renderGallery, newsletter: renderNewsletter, reviews: renderReviews, settings: renderSettings }[tab])();
   }
   const panel = () => $('#panel');
   const stat = (v, l) => `<div class="card" style="padding:20px"><div style="font-family:var(--font-display);font-size:2rem;color:var(--gold)">${v}</div><div class="muted" style="font-size:.68rem;letter-spacing:.14em;text-transform:uppercase">${l}</div></div>`;
@@ -183,6 +183,42 @@ document.addEventListener('na:ready', () => {
   const rowChip = (label, id) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border:1px solid var(--card-line);border-radius:4px;margin-bottom:8px"><span>${label}</span><button id="${id}" class="mini" style="border:1px solid var(--card-line);border-radius:4px;padding:5px 10px;color:#ff8e8e">Remove</button></div>`;
 
   /* ---------- SERVICES ---------- */
+  async function renderGallery() {
+    const rows = await (await api('/api/admin/gallery')).json();
+    panel().innerHTML = `
+      <h3 style="font-size:1.2rem;margin-bottom:14px">Gallery photos</h3>
+      <div id="galList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:24px">
+        ${rows.map(g => `
+        <div class="card" style="padding:14px">
+          <div style="width:100%;aspect-ratio:1;border-radius:4px;overflow:hidden;background:#0e0e0e;margin-bottom:10px;display:flex;align-items:center;justify-content:center">
+            ${g.image_url ? `<img src="/${esc(g.image_url)}" alt="${esc(g.label)}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+            <span class="muted" style="font-size:.76rem;${g.image_url ? 'display:none' : 'display:flex'};align-items:center;justify-content:center;height:100%;padding:10px;text-align:center">No image / broken path</span>
+          </div>
+          <input value="${esc(g.label)}" data-galf="label" data-id="${g.id}" style="width:100%;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:8px;margin-bottom:6px;font-size:.86rem">
+          <input value="${esc(g.image_url)}" data-galf="image_url" data-id="${g.id}" placeholder="images/photo.jpg" style="width:100%;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:8px;margin-bottom:8px;font-size:.8rem">
+          <button class="mini" data-delgal="${g.id}" style="width:100%;border:1px solid var(--card-line);border-radius:4px;padding:7px;color:#ff8e8e">Delete</button>
+        </div>`).join('') || '<p class="empty-note" style="grid-column:1/-1">No photos yet — add your first one below.</p>'}
+      </div>
+      <h3 style="font-size:1.1rem;margin:26px 0 12px">Add a photo</h3>
+      <div class="card" style="display:grid;grid-template-columns:1fr 1.4fr auto;gap:10px;align-items:center">
+        <input id="ngLabel" placeholder="Label (e.g. Skin Fade)" style="background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px">
+        <input id="ngUrl" placeholder="images/your-photo.jpg" style="background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px">
+        <button class="btn btn-gold" id="ngAdd" style="padding:10px 16px">Add</button>
+      </div>
+      <p class="muted" style="font-size:.82rem;margin-top:12px">Image URL should be the path to a photo already uploaded to the site (e.g. <code>images/photo.jpg</code>), or a full https:// link. Edits to label/URL save automatically when you click away from a field.</p>`;
+
+    document.querySelectorAll('[data-galf]').forEach(inp => inp.onchange = async () => {
+      await api(`/api/admin/gallery/${inp.dataset.id}`, { method: 'PATCH', body: JSON.stringify({ [inp.dataset.galf]: inp.value }) });
+      renderGallery();
+    });
+    document.querySelectorAll('[data-delgal]').forEach(b => b.onclick = async () => { if (confirm('Delete this photo?')) { await api(`/api/admin/gallery/${b.dataset.delgal}`, { method: 'DELETE' }); renderGallery(); } });
+    $('#ngAdd').onclick = async () => {
+      const p = { label: $('#ngLabel').value.trim(), image_url: $('#ngUrl').value.trim() };
+      if (!p.label) return alert('Please enter a label.');
+      await api('/api/admin/gallery', { method: 'POST', body: JSON.stringify(p) }); renderGallery();
+    };
+  }
+
   async function renderServices() {
     const rows = await (await api('/api/admin/services')).json();
     panel().innerHTML = `

@@ -390,11 +390,20 @@ app.delete('/api/admin/reviews/:id', requireAdmin, (req, res) => {
   db.prepare('DELETE FROM reviews WHERE id=?').run(req.params.id); res.json({ ok: true });
 });
 
+app.get('/api/admin/gallery', requireAdmin, (req, res) => {
+  res.json(db.prepare('SELECT * FROM gallery ORDER BY sort_order,id').all());
+});
 app.post('/api/admin/gallery', requireAdmin, (req, res) => {
   const { label, image_url } = req.body || {};
   if (!label) return res.status(400).json({ error: 'Label required.' });
   const max = db.prepare('SELECT COALESCE(MAX(sort_order),0)+1 n FROM gallery').get().n;
   db.prepare('INSERT INTO gallery (label,image_url,sort_order) VALUES (?,?,?)').run(label, image_url || '', max);
+  res.json({ ok: true });
+});
+app.patch('/api/admin/gallery/:id', requireAdmin, (req, res) => {
+  const { label, image_url } = req.body || {};
+  db.prepare('UPDATE gallery SET label=COALESCE(?,label), image_url=COALESCE(?,image_url) WHERE id=?')
+    .run(label ?? null, image_url ?? null, req.params.id);
   res.json({ ok: true });
 });
 app.delete('/api/admin/gallery/:id', requireAdmin, (req, res) => {
