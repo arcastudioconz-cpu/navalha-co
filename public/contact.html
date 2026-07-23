@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Contact — Navalha &amp; Co</title>
+<meta name="description" content="Get in touch with Navalha & Co. Message on WhatsApp for the fastest reply, or send a note through the form." />
+<meta name="theme-color" content="#0A0A0A" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<main>
+  <section class="section pt-nav split">
+    <div>
+      <span class="eyebrow">Say hello</span>
+      <h2>Get in touch</h2>
+      <div class="divider"></div>
+      <p class="lead">The quickest way to reach Eduardo is WhatsApp — for booking changes, questions or anything else.</p>
+      <p style="margin:20px 0;color:#b5b5b5">Prefer to write? Drop a note below and you'll hear back soon. For a new appointment, the booking page is the fastest route.</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:26px">
+        <a class="btn btn-gold" data-wa="Hi Navalha & Co, I have a question.">Message on WhatsApp</a>
+        <a class="btn btn-ghost" href="booking.html">Book Appointment</a>
+      </div>
+      <div class="socials">
+        <a href="#" aria-label="Instagram" title="Instagram">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.8.3 2.2.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.1.4.3 1 .4 2.2.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.3 1.8-.4 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.1-1 .3-2.2.4-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.8-.3-2.2-.4-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.1-.4-.3-1-.4-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.9c.1-1.2.3-1.8.4-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.1 1-.3 2.2-.4C8.4 2.2 8.8 2.2 12 2.2zm0 3.2A6.6 6.6 0 1 0 18.6 12 6.6 6.6 0 0 0 12 5.4zm0 10.9A4.3 4.3 0 1 1 16.3 12 4.3 4.3 0 0 1 12 16.3zm6.9-11.2a1.5 1.5 0 1 1-1.5-1.5 1.5 1.5 0 0 1 1.5 1.5z"/></svg></a>
+        <a href="#" aria-label="WhatsApp" data-wa="Hi Navalha & Co!" title="WhatsApp">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.2-1.7-.9-2-1-.3-.1-.5-.1-.6.2-.2.3-.7.9-.8 1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5c.1-.2.2-.3.3-.5 0-.2 0-.4 0-.5s-.6-1.5-.9-2c-.2-.5-.4-.5-.6-.5h-.5c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.6-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3z"/></svg></a>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="field"><label>Name</label><input id="cName" type="text" placeholder="Your name" /></div>
+        <div class="field"><label>WhatsApp or email</label><input id="cContact" type="text" placeholder="How to reach you" /></div>
+        <div class="field"><label>Message</label><textarea id="cMsg" placeholder="How can we help?"></textarea></div>
+        <div class="form-msg" id="cFormMsg"></div>
+        <button class="btn btn-gold" id="cSend" style="width:100%">Send via WhatsApp</button>
+        <p class="muted" style="font-size:.78rem;margin-top:12px">This opens WhatsApp with your message ready to send.</p>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('na:ready', () => {
+  document.getElementById('cSend').addEventListener('click', () => {
+    const n = document.getElementById('cName').value.trim();
+    const c = document.getElementById('cContact').value.trim();
+    const m = document.getElementById('cMsg').value.trim();
+    const msg = document.getElementById('cFormMsg');
+    if (!n || !m) { msg.className = 'form-msg err'; msg.textContent = 'Please add your name and a message.'; return; }
+    const text = `Hi Navalha & Co, I'm ${n}${c ? ' (' + c + ')' : ''}.\n\n${m}`;
+    window.open(window.NA.waLink(text), '_blank');
+  });
+});
+</script>
+</body>
+</html>

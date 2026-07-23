@@ -1,0 +1,20 @@
+{
+  "name": "navalha-co",
+  "version": "1.0.0",
+  "description": "Navalha & Co — private appointment-only barber studio. Booking system, admin dashboard, newsletter and concierge. Built by ARCA Studio.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}

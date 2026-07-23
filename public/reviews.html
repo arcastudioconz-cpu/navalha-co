@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reviews — Navalha &amp; Co</title>
+<meta name="description" content="What clients say about Navalha & Co — a private, one-on-one barber studio known for precision, patience and a genuinely premium experience." />
+<meta name="theme-color" content="#0A0A0A" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<main>
+  <section class="section pt-nav">
+    <span class="eyebrow">Client words</span>
+    <h2>Reviews</h2>
+    <div class="divider"></div>
+    <p class="lead">The one-on-one studio experience, in clients' own words.</p>
+    <div class="grid rev-grid" id="reviewGrid" style="margin-top:40px"></div>
+    <div style="margin-top:36px"><a class="btn btn-gold" href="booking.html">Book Your Appointment</a></div>
+  </section>
+</main>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('na:ready', async () => {
+  const reviews = await window.NA.reviews();
+  document.getElementById('reviewGrid').innerHTML = reviews.map(r =>
+    `<div class="card rev"><div class="stars">${'★'.repeat(r.rating)}</div><q>${r.text}</q><div class="who">${r.name}</div></div>`
+  ).join('') || '<p class="empty-note">Reviews coming soon.</p>';
+});
+</script>
+</body>
+</html>

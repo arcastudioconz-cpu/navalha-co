@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gallery — Navalha &amp; Co</title>
+<meta name="description" content="A look at the work — fades, classic cuts, textured crops, beard sculpting and hot-towel finishes from Navalha & Co." />
+<meta name="theme-color" content="#0A0A0A" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<main>
+  <section class="section pt-nav">
+    <span class="eyebrow">Portfolio</span>
+    <h2>The work</h2>
+    <div class="divider"></div>
+    <p class="lead">A selection of cuts and finishes from the studio. Replace these frames with real photography from the dashboard whenever you're ready.</p>
+    <div class="grid gal" id="galleryGrid" style="margin-top:40px"></div>
+    <div style="margin-top:36px"><a class="btn btn-gold" href="booking.html">Book Your Appointment</a></div>
+  </section>
+</main>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('na:ready', async () => {
+  const gallery = await window.NA.gallery();
+  document.getElementById('galleryGrid').innerHTML = gallery.map(g =>
+    `<div class="frame">${g.image_url ? `<img src="${g.image_url}" alt="${g.label}">` : ''}<span>${g.label}</span></div>`
+  ).join('') || '<p class="empty-note">Photos coming soon.</p>';
+});
+</script>
+</body>
+</html>

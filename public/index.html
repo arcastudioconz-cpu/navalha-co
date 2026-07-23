@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Navalha &amp; Co — Appointment-Only Barber | Your style. Your confidence.</title>
+<meta name="description" content="Navalha & Co is a private, appointment-only barber studio. Precision haircuts, beard work and grooming in a one-on-one luxury setting. Book your appointment online." />
+<meta name="theme-color" content="#0A0A0A" />
+<meta property="og:title" content="Navalha & Co — Appointment-Only Barber" />
+<meta property="og:description" content="A premium one-on-one barber experience, built around your personal style." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-inner">
+      <span class="eyebrow">By Appointment · Private Studio</span>
+      <h1>Your Style. Your Confidence.<span class="accent">Your barber.</span></h1>
+      <p class="sub">A private, one-on-one barber studio where every cut is built around you — no queues, no rush, no crowd. Just precision, and time set aside for your look.</p>
+      <div class="hero-cta">
+        <a class="btn btn-gold" href="booking.html">Book Your Appointment</a>
+        <a class="btn btn-ghost" href="services.html">View Services &amp; Prices</a>
+      </div>
+    </div>
+    <div class="scroll-hint">Scroll<i></i></div>
+  </section>
+
+  <section class="section split">
+    <div>
+      <span class="eyebrow">The Studio</span>
+      <h2>A barbershop of one, built for one.</h2>
+      <div class="divider"></div>
+      <p class="lead">Navalha &amp; Co isn't a chain seat. It's Eduardo, his chair, and the person in it — a room designed so your appointment is the only thing happening.</p>
+      <p style="margin:18px 0 26px;color:#b5b5b5">Every visit is booked, private and unhurried. You choose your style, describe the details, and leave with a cut that fits your face and your life — not a template.</p>
+      <a class="btn btn-ghost" href="about.html">Read Eduardo's Story</a>
+    </div>
+    <div class="frame wide"><span>Studio &amp; chair — photography</span></div>
+  </section>
+
+  <section class="section">
+    <span class="eyebrow">Craft</span>
+    <h2>Services &amp; prices</h2>
+    <div class="divider"></div>
+    <div class="grid svc-grid" id="homeServices"></div>
+    <div style="margin-top:30px"><a class="btn btn-ghost" href="services.html">See full service menu</a></div>
+  </section>
+
+  <section class="section">
+    <span class="eyebrow">Proof</span>
+    <h2>Recent work</h2>
+    <div class="divider"></div>
+    <div class="grid gal" id="homeGallery"></div>
+    <div style="margin-top:30px"><a class="btn btn-ghost" href="gallery.html">Open the gallery</a></div>
+  </section>
+
+  <section class="section">
+    <span class="eyebrow">Trust</span>
+    <h2>What clients say</h2>
+    <div class="divider"></div>
+    <div class="grid rev-grid" id="homeReviews"></div>
+  </section>
+
+  <div class="band">
+    <section class="section">
+      <span class="eyebrow center">Ready when you are</span>
+      <h2>Book a chair that's only yours.</h2>
+      <p class="lead" style="margin:14px auto 30px">Pick your service, choose your style, and lock a time. The exact address is sent privately once your appointment is confirmed.</p>
+      <a class="btn btn-gold" href="booking.html">Book Your Appointment</a>
+    </section>
+  </div>
+</main>
+
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('na:ready', async () => {
+  const { money } = window.NA;
+  const svcCard = s => `<div class="card svc"><div class="top"><h3>${s.name}</h3><span class="price">${money(s.price)}</span></div><span class="dur">${s.duration_min} min</span><p>${s.description}</p></div>`;
+  const galTile = g => `<div class="frame">${g.image_url ? `<img src="${g.image_url}" alt="${g.label}">` : ''}<span>${g.label}</span></div>`;
+  const revCard = r => `<div class="card rev"><div class="stars">${'★'.repeat(r.rating)}</div><q>${r.text}</q><div class="who">${r.name}</div></div>`;
+  const [services, gallery, reviews] = await Promise.all([window.NA.services(), window.NA.gallery(), window.NA.reviews()]);
+  document.getElementById('homeServices').innerHTML = services.slice(0,4).map(svcCard).join('');
+  document.getElementById('homeGallery').innerHTML = gallery.slice(0,3).map(galTile).join('');
+  document.getElementById('homeReviews').innerHTML = reviews.slice(0,3).map(revCard).join('');
+});
+</script>
+</body>
+</html>
