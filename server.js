@@ -82,7 +82,6 @@ const overlaps = (a1, a2, b1, b2) => a1 < b2 && b1 < a2;
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const nowMinutes = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 
-// Returns the array of busy [startMin,endMin) intervals for a date.
 function busyIntervals(date) {
   const busy = [];
   db.prepare(`SELECT appointment_time t, duration_min d FROM appointments
@@ -93,7 +92,6 @@ function busyIntervals(date) {
   return busy;
 }
 
-// Is a whole date open at all (working day + not blocked + not past)?
 function dateIsOpen(date) {
   if (date < todayISO()) return false;
   if (db.prepare('SELECT 1 FROM blocked_dates WHERE date=?').get(date)) return false;
@@ -102,7 +100,6 @@ function dateIsOpen(date) {
   return !!(wh && wh.is_open);
 }
 
-// Compute available start times for a date + service duration.
 function availableTimes(date, durationMin) {
   if (!dateIsOpen(date)) return [];
   const dow = new Date(date + 'T00:00:00').getDay();
@@ -149,10 +146,9 @@ app.get('/api/gallery', (req, res) => {
   res.json(db.prepare('SELECT label,image_url FROM gallery ORDER BY sort_order,id').all());
 });
 
-// Which dates in a given month are open (for greying out the calendar)
 app.get('/api/availability/days', (req, res) => {
   const year = parseInt(req.query.year, 10);
-  const month = parseInt(req.query.month, 10); // 1..12
+  const month = parseInt(req.query.month, 10);
   if (!year || !month) return res.status(400).json({ error: 'year and month required' });
   const days = new Date(year, month, 0).getDate();
   const open = [];
@@ -163,7 +159,6 @@ app.get('/api/availability/days', (req, res) => {
   res.json({ open });
 });
 
-// Available start times for a date + service
 app.get('/api/availability', (req, res) => {
   const { date, service_id } = req.query;
   if (!date || !service_id) return res.status(400).json({ error: 'date and service_id required' });
@@ -172,7 +167,6 @@ app.get('/api/availability', (req, res) => {
   res.json({ date, times: availableTimes(date, svc.duration_min) });
 });
 
-// Create a booking (atomic double-booking check)
 const createBooking = db.transaction((data) => {
   const svc = db.prepare('SELECT id,name,duration_min,price FROM services WHERE id=? AND active=1').get(data.service_id);
   if (!svc) throw { status: 400, msg: 'Unknown service' };
@@ -212,15 +206,28 @@ app.post('/api/bookings', (req, res) => {
       style: req.body.style, notes: req.body.notes, date, time
     });
     const wa = buildWhatsApp(name.trim(), date, time, result.service.name);
-    // (Optional) fire-and-forget automated send if Twilio is configured
     require('./whatsapp').send(phone, wa.text).catch(() => {});
+
+    // Fire-and-forget: email Eduardo the full booking details. Never
+    // blocks or breaks the customer's confirmation if it fails.
+    require('./email').notifyEduardoNewBooking({
+      customer_name: name.trim(),
+      phone: phone.trim(),
+      service_name: result.service.name,
+      duration_min: result.service.duration_min,
+      price: result.service.price,
+      style: req.body.style || '',
+      notes: req.body.notes || '',
+      date,
+      time
+    }).catch(() => {});
+
     res.json({ ok: true, id: result.id, whatsapp_url: wa.url, whatsapp_text: wa.text });
   } catch (e) {
     res.status(e.status || 500).json({ error: e.msg || 'Could not create booking.' });
   }
 });
 
-// Newsletter signup
 app.post('/api/newsletter', (req, res) => {
   const { full_name, email, phone } = req.body || {};
   if (!full_name || full_name.trim().length < 2) return res.status(400).json({ error: 'Please enter your full name.' });
@@ -258,7 +265,7 @@ app.post('/api/admin/password', requireAdmin, (req, res) => {
 // ADMIN — APPOINTMENTS
 // ------------------------------------------------------------------
 app.get('/api/admin/appointments', requireAdmin, (req, res) => {
-  const scope = req.query.scope; // today | upcoming | all
+  const scope = req.query.scope;
   let sql = 'SELECT * FROM appointments';
   const params = [];
   if (scope === 'today') { sql += ' WHERE appointment_date=?'; params.push(todayISO()); }
@@ -423,7 +430,6 @@ app.patch('/api/admin/settings', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// Return-customer reminders due (30 days). Call from a cron / scheduler.
 app.get('/api/admin/reminders/due', requireAdmin, (req, res) => {
   const rows = db.prepare(`SELECT * FROM appointments
     WHERE status='completed' AND reminder_sent=0
