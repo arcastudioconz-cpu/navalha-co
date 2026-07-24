@@ -97,10 +97,10 @@ function textToHtml(text) {
 // unsubscribe link would be a good future addition if the list grows.
 async function sendNewsletterBroadcast(subject, bodyText, recipients) {
   if (!resend) {
-    return { sent: 0, failed: recipients.length, error: 'Resend not configured (missing package or RESEND_API_KEY).' };
+    return { sent: 0, failed: recipients.length, lastError: 'Resend not configured on the server (missing package or RESEND_API_KEY).' };
   }
   const bodyHtml = textToHtml(bodyText);
-  let sent = 0, failed = 0;
+  let sent = 0, failed = 0, lastError = null;
 
   for (const r of recipients) {
     try {
@@ -114,17 +114,21 @@ async function sendNewsletterBroadcast(subject, bodyText, recipients) {
           <p style="font-size:12px;color:#888;">You're receiving this because you joined the Navalha &amp; Co newsletter. Reply to this email if you'd rather not receive these.</p>
         `
       });
-      if (error) { failed++; console.error('[email] Newsletter send failed for', r.email, error.message || error); }
-      else sent++;
+      if (error) {
+        failed++;
+        lastError = (error && (error.message || error.name || JSON.stringify(error))) || 'Unknown error';
+        console.error('[email] Newsletter send failed for', r.email, lastError);
+      } else sent++;
     } catch (err) {
       failed++;
-      console.error('[email] Newsletter send failed for', r.email, err.message);
+      lastError = err.message || String(err);
+      console.error('[email] Newsletter send failed for', r.email, lastError);
     }
     // Small gap between sends to stay well within provider rate limits.
     await new Promise(res => setTimeout(res, 350));
   }
 
-  return { sent, failed };
+  return { sent, failed, lastError };
 }
 
 module.exports = { notifyEduardoNewBooking, sendNewsletterBroadcast };

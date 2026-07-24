@@ -465,7 +465,7 @@ app.post('/api/admin/newsletter/send', requireAdmin, async (req, res) => {
   try {
     const result = await require('./email').sendNewsletterBroadcast(subject.trim(), body, recipients);
     db.prepare('INSERT INTO newsletter_sends (subject, recipient_count) VALUES (?,?)').run(subject.trim(), result.sent);
-    res.json({ ok: true, sent: result.sent, failed: result.failed, total: recipients.length });
+    res.json({ ok: true, sent: result.sent, failed: result.failed, total: recipients.length, lastError: result.lastError || null });
   } catch (err) {
     res.status(500).json({ error: 'Failed to send newsletter: ' + err.message });
   }

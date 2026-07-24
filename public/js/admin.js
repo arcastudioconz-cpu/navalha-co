@@ -390,7 +390,8 @@ document.addEventListener('na:ready', () => {
       const r = await fetch('/api/admin/newsletter/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject, body }) });
       const result = await r.json();
       if (!r.ok) { msg.className = 'form-msg err'; msg.textContent = result.error || 'Send failed.'; btn.disabled = false; btn.textContent = `Send to All Subscribers (${data.total})`; return; }
-      msg.className = 'form-msg ok'; msg.textContent = `Sent to ${result.sent} of ${result.total} subscribers${result.failed ? ` (${result.failed} failed)` : ''}.`;
+      msg.className = result.failed ? 'form-msg err' : 'form-msg ok';
+      msg.textContent = `Sent to ${result.sent} of ${result.total} subscribers${result.failed ? ` (${result.failed} failed${result.lastError ? ': ' + result.lastError : ''})` : ''}.`;
       btn.disabled = false; btn.textContent = `Send to All Subscribers (${data.total})`;
     };
 
