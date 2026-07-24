@@ -443,6 +443,15 @@ app.get('/api/admin/reminders/due', requireAdmin, (req, res) => {
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
+// ------------------------------------------------------------------
+// 404 — anything that didn't match a real file or API route above.
+// Must be registered after static + all routes, so it only catches
+// genuinely unmatched requests.
+// ------------------------------------------------------------------
+app.use((req, res) => {
+  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`\n  Navalha & Co running \u2192  http://localhost:${PORT}`);
   console.log(`  Admin dashboard      \u2192  http://localhost:${PORT}/admin\n`);
