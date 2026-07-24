@@ -77,14 +77,14 @@ document.addEventListener('na:ready', () => {
       </div>
       <h3 style="font-size:1.2rem;margin-bottom:14px">Today \u2014 ${new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
       ${apptTable(today) || '<p class="empty-note">No appointments today.</p>'}`;
-    wireApptButtons(renderToday);
+    wireApptButtons(renderToday, today);
   }
 
   /* ---------- APPOINTMENTS ---------- */
   async function renderAppointments() {
     const rows = await (await api('/api/admin/appointments?scope=all')).json();
     panel().innerHTML = `<h3 style="font-size:1.2rem;margin-bottom:14px">All appointments</h3>${apptTable(rows) || '<p class="empty-note">No appointments yet.</p>'}`;
-    wireApptButtons(renderAppointments);
+    wireApptButtons(renderAppointments, rows);
   }
   function apptTable(rows) {
     if (!rows.length) return '';
@@ -98,15 +98,64 @@ document.addEventListener('na:ready', () => {
         <td style="padding:12px;border-bottom:1px solid var(--card-line)">${esc(a.style)}${a.notes ? `<br><span class="muted" style="font-size:.76rem">${esc(a.notes)}</span>` : ''}</td>
         <td style="padding:12px;border-bottom:1px solid var(--card-line)"><span style="color:${a.status === 'cancelled' ? '#ff8e8e' : a.status === 'completed' ? 'var(--muted)' : 'var(--gold-light)'}">${a.status}</span></td>
         <td style="padding:12px;border-bottom:1px solid var(--card-line);white-space:nowrap">
-          ${a.status === 'confirmed' ? `<button class="mini" data-done="${a.id}" title="Mark completed">\u2713</button><button class="mini" data-cancel="${a.id}" title="Cancel">\u2715</button>` : ''}
+          ${a.status === 'confirmed' ? `<button class="mini" data-edit="${a.id}" title="Edit">\u270e</button><button class="mini" data-done="${a.id}" title="Mark completed">\u2713</button><button class="mini" data-cancel="${a.id}" title="Cancel">\u2715</button>` : ''}
           <button class="mini" data-del="${a.id}" title="Delete">\ud83d\uddd1</button>
         </td></tr>`).join('')}</tbody></table>
+      <div id="editApptBox"></div>
       <style>.mini{border:1px solid var(--card-line);border-radius:4px;padding:5px 9px;margin-left:5px;color:var(--gold-light);font-size:.8rem}.mini:hover{border-color:var(--gold)}</style>`;
   }
-  function wireApptButtons(refresh) {
+  function wireApptButtons(refresh, rows) {
     document.querySelectorAll('[data-done]').forEach(b => b.onclick = async () => { await api(`/api/admin/appointments/${b.dataset.done}`, { method: 'PATCH', body: JSON.stringify({ status: 'completed' }) }); refresh(); });
     document.querySelectorAll('[data-cancel]').forEach(b => b.onclick = async () => { if (confirm('Cancel this appointment? The time slot reopens for others.')) { await api(`/api/admin/appointments/${b.dataset.cancel}`, { method: 'PATCH', body: JSON.stringify({ status: 'cancelled' }) }); refresh(); } });
     document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (confirm('Permanently delete this appointment?')) { await api(`/api/admin/appointments/${b.dataset.del}`, { method: 'DELETE' }); refresh(); } });
+    document.querySelectorAll('[data-edit]').forEach(b => b.onclick = async () => {
+      const appt = (rows || []).find(r => String(r.id) === b.dataset.edit);
+      if (appt) await openEditAppt(appt, refresh);
+    });
+  }
+
+  async function openEditAppt(appt, refresh) {
+    const services = await (await api('/api/admin/services')).json();
+    const box = $('#editApptBox');
+    box.innerHTML = `
+      <div class="card" style="margin-top:16px;padding:20px">
+        <h3 style="font-size:1.05rem;margin-bottom:14px">Edit appointment — ${esc(appt.customer_name)}</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div><label class="muted" style="font-size:.72rem;display:block;margin-bottom:5px">Name</label><input id="eaName" value="${esc(appt.customer_name)}" style="width:100%;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px"></div>
+          <div><label class="muted" style="font-size:.72rem;display:block;margin-bottom:5px">Phone</label><input id="eaPhone" value="${esc(appt.phone)}" style="width:100%;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+          <div><label class="muted" style="font-size:.72rem;display:block;margin-bottom:5px">Service</label>
+            <select id="eaService" style="width:100%;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px">
+              ${services.map(s => `<option value="${s.id}" ${s.id === appt.service_id ? 'selected' : ''}>${esc(s.name)} (${s.duration_min}min)</option>`).join('')}
+            </select></div>
+          <div><label class="muted" style="font-size:.72rem;display:block;margin-bottom:5px">Date</label><input id="eaDate" type="date" value="${appt.appointment_date}" style="width:100%;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px"></div>
+          <div><label class="muted" style="font-size:.72rem;display:block;margin-bottom:5px">Time</label><input id="eaTime" type="time" value="${appt.appointment_time}" style="width:100%;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px"></div>
+        </div>
+        <div style="margin-bottom:14px"><label class="muted" style="font-size:.72rem;display:block;margin-bottom:5px">Style / Notes</label><input id="eaStyle" value="${esc(appt.style)}" placeholder="Style" style="width:100%;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px;margin-bottom:8px"><textarea id="eaNotes" placeholder="Notes" style="width:100%;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px;min-height:60px">${esc(appt.notes)}</textarea></div>
+        <div class="form-msg err" id="eaMsg"></div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-gold" id="eaSave">Save Changes</button>
+          <button class="btn btn-ghost" id="eaCancel">Cancel</button>
+        </div>
+      </div>`;
+    $('#eaCancel').onclick = () => { box.innerHTML = ''; };
+    $('#eaSave').onclick = async () => {
+      const payload = {
+        customer_name: $('#eaName').value.trim(),
+        phone: $('#eaPhone').value.trim(),
+        service_id: Number($('#eaService').value),
+        date: $('#eaDate').value,
+        time: $('#eaTime').value,
+        style: $('#eaStyle').value.trim(),
+        notes: $('#eaNotes').value.trim()
+      };
+      const r = await fetch(`/api/admin/appointments/${appt.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await r.json();
+      if (!r.ok) { $('#eaMsg').textContent = data.error || 'Could not save changes.'; return; }
+      box.innerHTML = '';
+      refresh();
+    };
   }
 
   /* ---------- AVAILABILITY ---------- */
@@ -253,16 +302,98 @@ document.addEventListener('na:ready', () => {
 
   /* ---------- NEWSLETTER ---------- */
   async function renderNewsletter() {
-    const data = await (await api('/api/admin/subscribers')).json();
+    const [data, templates] = await Promise.all([
+      (await api('/api/admin/subscribers')).json(),
+      (await api('/api/admin/email-templates')).json()
+    ]);
     panel().innerHTML = `
       <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px">
         ${stat(data.total, 'Total subscribers')}${stat(data.this_month, 'This month')}${stat(data.this_week, 'This week')}
       </div>
+
+      <h3 style="font-size:1.2rem;margin-bottom:6px">Compose &amp; send</h3>
+      <p class="muted" style="font-size:.85rem;margin-bottom:16px">Write a message, or start from a template below. Sends to every active subscriber.</p>
+      <div class="card" style="margin-bottom:20px">
+        <div style="margin-bottom:10px">
+          <label class="muted" style="font-size:.72rem;display:block;margin-bottom:5px">Start from a template (optional)</label>
+          <select id="tplSelect" style="width:100%;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px">
+            <option value="">— Blank message —</option>
+            ${templates.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><label>Subject</label><input id="nwSubject" placeholder="Subject line"></div>
+        <div class="field"><label>Message</label><textarea id="nwBody" style="min-height:160px" placeholder="Write your message here…"></textarea></div>
+        <div class="form-msg" id="nwMsg"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-gold" id="nwSend">Send to All Subscribers (${data.total})</button>
+          <button class="btn btn-ghost" id="nwSaveNew">Save as New Template</button>
+          <button class="btn btn-ghost" id="nwUpdateTpl" style="display:none">Update This Template</button>
+        </div>
+      </div>
+
+      <h3 style="font-size:1.1rem;margin-bottom:12px">Templates</h3>
+      <div id="tplList" style="margin-bottom:26px">
+        ${templates.map(t => `
+        <div class="card" style="padding:14px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:14px">
+          <div><div style="font-family:var(--font-display);font-size:.95rem">${esc(t.name)}</div><div class="muted" style="font-size:.78rem">${esc(t.subject)}</div></div>
+          <div style="white-space:nowrap"><button class="mini" data-loadtpl="${t.id}" style="border:1px solid var(--card-line);border-radius:4px;padding:6px 11px;color:var(--gold-light)">Load</button>
+          <button class="mini" data-deltpl="${t.id}" style="border:1px solid var(--card-line);border-radius:4px;padding:6px 11px;color:#ff8e8e;margin-left:5px">Delete</button></div>
+        </div>`).join('') || '<p class="empty-note">No templates yet — send a message and save it as one.</p>'}
+      </div>
+
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
         <input id="subSearch" placeholder="Search name or email\u2026" style="flex:1;min-width:200px;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:11px 14px">
         <a class="btn btn-ghost" href="/api/admin/subscribers.csv" style="padding:11px 20px">Export CSV</a>
       </div>
       <div id="subTable"></div>`;
+
+    let loadedTemplateId = null;
+
+    const applyTemplate = (id) => {
+      const t = templates.find(x => String(x.id) === String(id));
+      loadedTemplateId = t ? t.id : null;
+      $('#nwSubject').value = t ? t.subject : '';
+      $('#nwBody').value = t ? t.body : '';
+      $('#nwUpdateTpl').style.display = t ? 'inline-flex' : 'none';
+    };
+    $('#tplSelect').onchange = (e) => applyTemplate(e.target.value);
+    document.querySelectorAll('[data-loadtpl]').forEach(b => b.onclick = () => {
+      $('#tplSelect').value = b.dataset.loadtpl;
+      applyTemplate(b.dataset.loadtpl);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    document.querySelectorAll('[data-deltpl]').forEach(b => b.onclick = async () => {
+      if (confirm('Delete this template?')) { await api(`/api/admin/email-templates/${b.dataset.deltpl}`, { method: 'DELETE' }); renderNewsletter(); }
+    });
+
+    $('#nwSaveNew').onclick = async () => {
+      const subject = $('#nwSubject').value.trim(), body = $('#nwBody').value.trim();
+      if (!subject || !body) return alert('Write a subject and message first.');
+      const name = prompt('Name this template (for your own reference):', subject);
+      if (!name) return;
+      await api('/api/admin/email-templates', { method: 'POST', body: JSON.stringify({ name, subject, body }) });
+      renderNewsletter();
+    };
+    $('#nwUpdateTpl').onclick = async () => {
+      if (!loadedTemplateId) return;
+      const subject = $('#nwSubject').value.trim(), body = $('#nwBody').value.trim();
+      if (!subject || !body) return alert('Write a subject and message first.');
+      await api(`/api/admin/email-templates/${loadedTemplateId}`, { method: 'PATCH', body: JSON.stringify({ subject, body }) });
+      renderNewsletter();
+    };
+    $('#nwSend').onclick = async () => {
+      const subject = $('#nwSubject').value.trim(), body = $('#nwBody').value.trim();
+      const msg = $('#nwMsg');
+      if (!subject || !body) { msg.className = 'form-msg err'; msg.textContent = 'Write a subject and message first.'; return; }
+      if (!confirm(`Send this to all ${data.total} active subscribers? This can't be undone.`)) return;
+      const btn = $('#nwSend'); btn.disabled = true; btn.textContent = 'Sending…';
+      const r = await fetch('/api/admin/newsletter/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject, body }) });
+      const result = await r.json();
+      if (!r.ok) { msg.className = 'form-msg err'; msg.textContent = result.error || 'Send failed.'; btn.disabled = false; btn.textContent = `Send to All Subscribers (${data.total})`; return; }
+      msg.className = 'form-msg ok'; msg.textContent = `Sent to ${result.sent} of ${result.total} subscribers${result.failed ? ` (${result.failed} failed)` : ''}.`;
+      btn.disabled = false; btn.textContent = `Send to All Subscribers (${data.total})`;
+    };
+
     const draw = (d) => {
       $('#subTable').innerHTML = d.subscribers.length ? `<table class="data" style="width:100%;border-collapse:collapse;font-size:.86rem">
         <thead><tr>${['Name', 'Email', 'Phone', 'Joined', ''].map(h => `<th style="text-align:left;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);padding:10px 12px;border-bottom:1px solid var(--line)">${h}</th>`).join('')}</tr></thead>

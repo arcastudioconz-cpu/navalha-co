@@ -75,4 +75,56 @@ async function notifyEduardoNewBooking(booking) {
   }
 }
 
-module.exports = { notifyEduardoNewBooking };
+// Converts a plain-text email body into simple HTML — blank lines become
+// paragraph breaks, single line breaks become <br>. Keeps the newsletter
+// composer simple (just type normally) without needing a rich text editor.
+function textToHtml(text) {
+  return String(text || '')
+    .split(/\n\s*\n/)
+    .map(para => `<p style="margin:0 0 16px;">${para.replace(/\n/g, '<br>')}</p>`)
+    .join('');
+}
+
+// Sends a newsletter broadcast to a list of subscribers. Sends one at a
+// time (small barbershop list, so no need for batch/queue complexity) and
+// keeps going even if an individual send fails, so one bad address
+// doesn't stop the rest of the list. Returns a summary the dashboard can
+// show ("Sent to 42 of 43 subscribers").
+//
+// Note: there is currently no one-click unsubscribe link — each email
+// includes a line asking people to reply if they'd like to be removed,
+// and Eduardo can delete them from the Newsletter tab. A proper
+// unsubscribe link would be a good future addition if the list grows.
+async function sendNewsletterBroadcast(subject, bodyText, recipients) {
+  if (!resend) {
+    return { sent: 0, failed: recipients.length, error: 'Resend not configured (missing package or RESEND_API_KEY).' };
+  }
+  const bodyHtml = textToHtml(bodyText);
+  let sent = 0, failed = 0;
+
+  for (const r of recipients) {
+    try {
+      const { error } = await resend.emails.send({
+        from: FROM_ADDRESS,
+        to: r.email,
+        subject,
+        html: `
+          ${bodyHtml}
+          <hr style="border:none;border-top:1px solid #ddd;margin:24px 0 12px;">
+          <p style="font-size:12px;color:#888;">You're receiving this because you joined the Navalha &amp; Co newsletter. Reply to this email if you'd rather not receive these.</p>
+        `
+      });
+      if (error) { failed++; console.error('[email] Newsletter send failed for', r.email, error.message || error); }
+      else sent++;
+    } catch (err) {
+      failed++;
+      console.error('[email] Newsletter send failed for', r.email, err.message);
+    }
+    // Small gap between sends to stay well within provider rate limits.
+    await new Promise(res => setTimeout(res, 350));
+  }
+
+  return { sent, failed };
+}
+
+module.exports = { notifyEduardoNewBooking, sendNewsletterBroadcast };

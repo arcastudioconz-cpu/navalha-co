@@ -82,10 +82,13 @@ const overlaps = (a1, a2, b1, b2) => a1 < b2 && b1 < a2;
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const nowMinutes = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 
-function busyIntervals(date) {
+function busyIntervals(date, excludeId) {
   const busy = [];
-  db.prepare(`SELECT appointment_time t, duration_min d FROM appointments
-              WHERE appointment_date=? AND status!='cancelled'`).all(date)
+  let sql = `SELECT id, appointment_time t, duration_min d FROM appointments
+              WHERE appointment_date=? AND status!='cancelled'`;
+  const params = [date];
+  if (excludeId) { sql += ' AND id != ?'; params.push(excludeId); }
+  db.prepare(sql).all(...params)
     .forEach(a => busy.push([toMin(a.t), toMin(a.t) + a.d]));
   db.prepare('SELECT start_time s, end_time e FROM blocked_times WHERE date=?').all(date)
     .forEach(b => busy.push([toMin(b.s), toMin(b.e)]));
@@ -100,7 +103,9 @@ function dateIsOpen(date) {
   return !!(wh && wh.is_open);
 }
 
-function availableTimes(date, durationMin) {
+// excludeId: when re-checking availability while editing an existing
+// appointment, pass its own id so it doesn't clash against itself.
+function availableTimes(date, durationMin, excludeId) {
   if (!dateIsOpen(date)) return [];
   const dow = new Date(date + 'T00:00:00').getDay();
   const wh = db.prepare('SELECT open_time,close_time FROM working_hours WHERE day_of_week=?').get(dow);
@@ -108,7 +113,7 @@ function availableTimes(date, durationMin) {
   const open = toMin(wh.open_time), close = toMin(wh.close_time);
   const step = parseInt(getSetting('slot_interval_min', '30'), 10) || 30;
   const lead = parseInt(getSetting('booking_lead_min', '60'), 10) || 0;
-  const busy = busyIntervals(date);
+  const busy = busyIntervals(date, excludeId);
   const isToday = date === todayISO();
   const earliest = isToday ? nowMinutes() + lead : -1;
 
@@ -274,9 +279,49 @@ app.get('/api/admin/appointments', requireAdmin, (req, res) => {
   res.json(db.prepare(sql).all(...params));
 });
 app.patch('/api/admin/appointments/:id', requireAdmin, (req, res) => {
-  const { status } = req.body || {};
-  if (!['confirmed', 'completed', 'cancelled'].includes(status)) return res.status(400).json({ error: 'Invalid status.' });
-  db.prepare('UPDATE appointments SET status=? WHERE id=?').run(status, req.params.id);
+  const { status, customer_name, phone, service_id, style, notes, date, time } = req.body || {};
+  const id = req.params.id;
+  const existing = db.prepare('SELECT * FROM appointments WHERE id=?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Appointment not found.' });
+
+  // Simple status-only update (existing behaviour) — unchanged.
+  if (status && !date && !time && !service_id && customer_name === undefined) {
+    if (!['confirmed', 'completed', 'cancelled'].includes(status)) return res.status(400).json({ error: 'Invalid status.' });
+    db.prepare('UPDATE appointments SET status=? WHERE id=?').run(status, id);
+    return res.json({ ok: true });
+  }
+
+  // Full edit — rebuilding the appointment's date/time/service.
+  const svcId = service_id || existing.service_id;
+  const svc = db.prepare('SELECT id,name,duration_min,price FROM services WHERE id=? AND active=1').get(svcId);
+  if (!svc) return res.status(400).json({ error: 'Unknown service.' });
+
+  const newDate = date || existing.appointment_date;
+  const newTime = time || existing.appointment_time;
+
+  // Re-check availability for the new slot, excluding this appointment's
+  // own current booking from the clash check (otherwise it would always
+  // conflict with itself when the time hasn't actually changed).
+  if (newDate !== existing.appointment_date || newTime !== existing.appointment_time || svc.id !== existing.service_id) {
+    const times = availableTimes(newDate, svc.duration_min, id);
+    if (!times.includes(newTime)) {
+      return res.status(409).json({ error: 'That new time is not available. Please pick another.' });
+    }
+  }
+
+  db.prepare(`UPDATE appointments SET
+      customer_name=COALESCE(?,customer_name), phone=COALESCE(?,phone),
+      service_id=?, service_name=?, duration_min=?, price=?,
+      style=COALESCE(?,style), notes=COALESCE(?,notes),
+      appointment_date=?, appointment_time=?, status=COALESCE(?,status)
+    WHERE id=?`)
+    .run(
+      customer_name ?? null, phone ?? null,
+      svc.id, svc.name, svc.duration_min, svc.price,
+      style ?? null, notes ?? null,
+      newDate, newTime, status ?? null,
+      id
+    );
   res.json({ ok: true });
 });
 app.delete('/api/admin/appointments/:id', requireAdmin, (req, res) => {
@@ -376,6 +421,54 @@ app.get('/api/admin/subscribers.csv', requireAdmin, (req, res) => {
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename="newsletter_subscribers.csv"');
   res.send(csv);
+});
+
+// ------------------------------------------------------------------
+// ADMIN — EMAIL TEMPLATES (pre-made + custom, for the newsletter composer)
+// ------------------------------------------------------------------
+app.get('/api/admin/email-templates', requireAdmin, (req, res) => {
+  res.json(db.prepare('SELECT * FROM email_templates ORDER BY id').all());
+});
+app.post('/api/admin/email-templates', requireAdmin, (req, res) => {
+  const { name, subject, body } = req.body || {};
+  if (!name || !subject || !body) return res.status(400).json({ error: 'Name, subject and body are required.' });
+  const info = db.prepare('INSERT INTO email_templates (name,subject,body) VALUES (?,?,?)').run(name, subject, body);
+  res.json({ ok: true, id: info.lastInsertRowid });
+});
+app.patch('/api/admin/email-templates/:id', requireAdmin, (req, res) => {
+  const { name, subject, body } = req.body || {};
+  db.prepare(`UPDATE email_templates SET name=COALESCE(?,name), subject=COALESCE(?,subject),
+    body=COALESCE(?,body), updated_at=datetime('now') WHERE id=?`)
+    .run(name ?? null, subject ?? null, body ?? null, req.params.id);
+  res.json({ ok: true });
+});
+app.delete('/api/admin/email-templates/:id', requireAdmin, (req, res) => {
+  db.prepare('DELETE FROM email_templates WHERE id=?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+// ------------------------------------------------------------------
+// ADMIN — SEND NEWSLETTER
+// ------------------------------------------------------------------
+app.get('/api/admin/newsletter/sends', requireAdmin, (req, res) => {
+  res.json(db.prepare('SELECT * FROM newsletter_sends ORDER BY sent_at DESC LIMIT 20').all());
+});
+
+app.post('/api/admin/newsletter/send', requireAdmin, async (req, res) => {
+  const { subject, body } = req.body || {};
+  if (!subject || !subject.trim()) return res.status(400).json({ error: 'Subject is required.' });
+  if (!body || !body.trim()) return res.status(400).json({ error: 'Message body is required.' });
+
+  const recipients = db.prepare("SELECT email, full_name FROM newsletter_subscribers WHERE status='active'").all();
+  if (recipients.length === 0) return res.status(400).json({ error: 'No active subscribers to send to.' });
+
+  try {
+    const result = await require('./email').sendNewsletterBroadcast(subject.trim(), body, recipients);
+    db.prepare('INSERT INTO newsletter_sends (subject, recipient_count) VALUES (?,?)').run(subject.trim(), result.sent);
+    res.json({ ok: true, sent: result.sent, failed: result.failed, total: recipients.length });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to send newsletter: ' + err.message });
+  }
 });
 
 // ------------------------------------------------------------------

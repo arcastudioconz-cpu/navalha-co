@@ -84,6 +84,26 @@ CREATE TABLE IF NOT EXISTS newsletter_subscribers (
   status        TEXT NOT NULL DEFAULT 'active'
 );
 
+-- Reusable / editable newsletter email templates. Eduardo can load one
+-- into the composer, tweak it, save changes back, or send as-is.
+CREATE TABLE IF NOT EXISTS email_templates (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  name       TEXT NOT NULL,          -- internal label, e.g. "Fresh Cut Reminder"
+  subject    TEXT NOT NULL,
+  body       TEXT NOT NULL,          -- plain text; converted to simple HTML paragraphs on send
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- A light log of each newsletter broadcast actually sent, so Eduardo can
+-- see send history (subject, recipient count, when) in the dashboard.
+CREATE TABLE IF NOT EXISTS newsletter_sends (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  subject       TEXT NOT NULL,
+  recipient_count INTEGER NOT NULL DEFAULT 0,
+  sent_at       TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS reviews (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   name       TEXT NOT NULL,
@@ -145,6 +165,30 @@ function seed() {
     const w = db.prepare('INSERT INTO working_hours (day_of_week,is_open,open_time,close_time) VALUES (?,?,?,?)');
     // Sunday closed, Mon–Sat open 09:00–18:00
     for (let d = 0; d <= 6; d++) w.run(d, d === 0 ? 0 : 1, '09:00', '18:00');
+  }
+
+  if (count('email_templates') === 0) {
+    const t = db.prepare('INSERT INTO email_templates (name,subject,body) VALUES (?,?,?)');
+    t.run(
+      'Fresh Cut Reminder',
+      "Time for a fresh cut? \u2702\ufe0f",
+      "Hey there,\n\nIt's been a little while since your last visit \u2014 thought you might be due for a fresh cut.\n\nBook your next appointment whenever suits you, and I'll see you in the chair soon.\n\nSee you soon,\nEduardo\nNavalha & Co"
+    );
+    t.run(
+      'Special Offer',
+      "A little something for you \ud83d\udd25",
+      "Hey there,\n\nJust wanted to let you know about a special offer running right now at Navalha & Co.\n\n[Describe your offer here]\n\nBook your appointment and mention this email to claim it.\n\nSee you soon,\nEduardo\nNavalha & Co"
+    );
+    t.run(
+      'Hours / Availability Update',
+      "A quick update on my hours",
+      "Hey there,\n\nJust a quick note about my current availability \u2014 [describe any changes to hours, holidays, or new opening days here].\n\nBook online any time to see exactly what's open.\n\nSee you soon,\nEduardo\nNavalha & Co"
+    );
+    t.run(
+      'Welcome',
+      "Welcome to Navalha & Co",
+      "Hey there,\n\nThanks for joining the Navalha & Co community! You'll be the first to hear about offers, availability, and anything new at the studio.\n\nReady for your first visit? Book online whenever suits you.\n\nSee you soon,\nEduardo\nNavalha & Co"
+    );
   }
 
   if (count('reviews') === 0) {
