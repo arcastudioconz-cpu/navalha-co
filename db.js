@@ -147,7 +147,7 @@ function seed() {
     s.run('slot_interval_min', '30'); // grid granularity for start times
     s.run('booking_lead_min', '60');  // earliest bookable time from "now", in minutes
     s.run('confirmation_message',
-      'Hi {name}! \u2702\ufe0f\n\nYour appointment at {business} is confirmed.\n\nDate: {date}\nTime: {time}\nService: {service}\n\nHere is your location:\n{location}\n\nIf anything comes up, just reply here.\n\nSee you soon! \ud83d\udd25');
+      'Hi {name}! \u2702\ufe0f\n\nYour appointment at {business} is confirmed.\n\nDate: {date}\nTime: {time}\nService: {service}\n\nHere is your location:\n{location}\n\nA reminder: {business} is cash only \u2014 no card or online payment on the day.\n\nIf anything comes up, just reply here.\n\nSee you soon! \ud83d\udd25');
     s.run('location_message', '\ud83d\udccd The exact studio address and door details are shared here privately once your appointment is confirmed.');
     s.run('reminder_message',
       'Hi {name}! \ud83d\udc4b\n\nIt\u2019s been a month since your last visit to {business}.\n\nReady for a fresh look? Reply here and book your next appointment.\n\nSee you soon! \u2728');

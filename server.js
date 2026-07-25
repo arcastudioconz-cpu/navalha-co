@@ -147,6 +147,21 @@ app.get('/api/reviews', (req, res) => {
   res.json(db.prepare('SELECT name,rating,text FROM reviews WHERE approved=1 ORDER BY created_at DESC').all());
 });
 
+// Public submission from the QR-code review page. Always saved as
+// pending (approved=0) — Eduardo reviews and approves each one from
+// the admin dashboard before it ever appears on the site, so a
+// bad-faith or spam submission can never go live automatically.
+app.post('/api/reviews', (req, res) => {
+  const { name, rating, text } = req.body || {};
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Please enter your name.' });
+  const r = Number(rating);
+  if (!r || r < 1 || r > 5) return res.status(400).json({ error: 'Please select a rating.' });
+  if (!text || !text.trim()) return res.status(400).json({ error: 'Please write a short review.' });
+  db.prepare('INSERT INTO reviews (name,rating,text,approved) VALUES (?,?,?,0)')
+    .run(name.trim().slice(0, 100), r, text.trim().slice(0, 1000));
+  res.json({ ok: true });
+});
+
 app.get('/api/gallery', (req, res) => {
   res.json(db.prepare('SELECT label,image_url FROM gallery ORDER BY sort_order,id').all());
 });
