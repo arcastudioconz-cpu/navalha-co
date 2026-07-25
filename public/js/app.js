@@ -68,7 +68,8 @@
 
   /* ---------- FLOATING BUTTONS + CHAT + POPUP ---------- */
   function waLink(text) {
-    const base = SITE.whatsapp ? `https://wa.me/${SITE.whatsapp}` : 'https://wa.me/';
+    const digitsOnly = (SITE.whatsapp || '').replace(/\D/g, '');
+    const base = digitsOnly ? `https://wa.me/${digitsOnly}` : 'https://wa.me/';
     return base + '?text=' + encodeURIComponent(text || `Hi ${SITE.name}, I'd like to book an appointment.`);
   }
 

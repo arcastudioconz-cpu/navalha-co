@@ -195,7 +195,7 @@ function buildWhatsApp(name, date, time, serviceName) {
   const text = tpl.replace('{name}', name).replace('{business}', business)
     .replace('{date}', prettyDate).replace('{time}', prettyTime)
     .replace('{service}', serviceName).replace('{location}', location);
-  const number = getSetting('whatsapp_number', '');
+  const number = getSetting('whatsapp_number', '').replace(/\D/g, '');
   const base = number ? `https://wa.me/${number}` : 'https://wa.me/';
   return { text, url: `${base}?text=${encodeURIComponent(text)}` };
 }
