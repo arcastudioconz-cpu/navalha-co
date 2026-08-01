@@ -135,7 +135,8 @@ app.get('/api/public/settings', (req, res) => {
     general_area: getSetting('general_area', ''),
     whatsapp_number: getSetting('whatsapp_number', ''),
     currency_symbol: getSetting('currency_symbol', '$'),
-    location_message: getSetting('location_message', '')
+    location_message: getSetting('location_message', ''),
+    facebook_pixel_id: getSetting('facebook_pixel_id', '')
   });
 });
 
@@ -533,7 +534,7 @@ app.get('/api/admin/settings', requireAdmin, (req, res) => {
 });
 app.patch('/api/admin/settings', requireAdmin, (req, res) => {
   const allowed = ['business_name', 'general_area', 'whatsapp_number', 'currency_symbol',
-    'slot_interval_min', 'booking_lead_min', 'confirmation_message', 'location_message', 'reminder_message'];
+    'slot_interval_min', 'booking_lead_min', 'confirmation_message', 'location_message', 'reminder_message', 'facebook_pixel_id'];
   Object.entries(req.body || {}).forEach(([k, v]) => { if (allowed.includes(k)) setSetting.run(k, String(v)); });
   res.json({ ok: true });
 });

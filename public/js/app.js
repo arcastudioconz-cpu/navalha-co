@@ -8,7 +8,7 @@
 
   const $ = (s, el = document) => el.querySelector(s);
   const $all = (s, el = document) => [...el.querySelectorAll(s)];
-  const SITE = { name: 'Navalha & Co', area: '', whatsapp: '', currency: '$', locationMsg: '' };
+  const SITE = { name: 'Navalha & Co', area: '', whatsapp: '', currency: '$', locationMsg: '', pixelId: '' };
 
   const NAV_ITEMS = [
     ['index.html', 'Home'], ['about.html', 'About'], ['services.html', 'Services'],
@@ -170,6 +170,7 @@
       SITE.whatsapp = s.whatsapp_number || '';
       SITE.currency = s.currency_symbol || '$';
       SITE.locationMsg = s.location_message || '';
+      SITE.pixelId = s.facebook_pixel_id || '';
     } catch { /* offline: keep defaults */ }
   }
 
@@ -180,8 +181,33 @@
     async services() { try { return await (await fetch('/api/services')).json(); } catch { return []; } },
     async reviews() { try { return await (await fetch('/api/reviews')).json(); } catch { return []; } },
     async gallery() { try { return await (await fetch('/api/gallery')).json(); } catch { return []; } },
-    initFaq
+    initFaq, trackPixelEvent
   };
+
+  /* ---------- Facebook Pixel ---------- */
+  // Loads Meta's base Pixel code and fires the standard PageView event
+  // on every page, only if Eduardo has actually set a Pixel ID in
+  // Settings — completely inert otherwise. trackPixelEvent() is exposed
+  // on window.NA so other page scripts (like the booking flow) can fire
+  // real conversion events, e.g. once a booking is actually confirmed.
+  function initFacebookPixel() {
+    if (!SITE.pixelId || window.fbq) return;
+    !function (f, b, e, v, n, t, s) {
+      if (f.fbq) return; n = f.fbq = function () {
+        n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments)
+      };
+      if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0';
+      n.queue = []; t = b.createElement(e); t.async = !0;
+      t.src = v; s = b.getElementsByTagName(e)[0];
+      s.parentNode.insertBefore(t, s)
+    }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', SITE.pixelId);
+    fbq('track', 'PageView');
+  }
+
+  function trackPixelEvent(eventName, params) {
+    if (window.fbq) fbq('track', eventName, params || {});
+  }
 
   /* ---------- Scroll fade-in ---------- */
   // Auto-tags common content blocks with .fade-up across every page, so
@@ -228,6 +254,7 @@
     await loadSettings();
     buildFooter();
     buildWidgets();
+    initFacebookPixel();
     // wire any WhatsApp CTAs on the page
     $all('[data-wa]').forEach(el => el.addEventListener('click', e => {
       e.preventDefault(); window.open(waLink(el.dataset.wa || ''), '_blank');

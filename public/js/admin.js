@@ -273,35 +273,28 @@ document.addEventListener('na:ready', () => {
     panel().innerHTML = `
       <h3 style="font-size:1.2rem;margin-bottom:14px">Services &amp; prices</h3>
       <div id="svcList">${rows.map(s => `
-        <div class="card" style="padding:16px;margin-bottom:10px;">
-          <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:10px;align-items:center;margin-bottom:10px;">
-            <input value="${esc(s.name)}" data-f="name" data-id="${s.id}" style="background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px">
-            <div style="display:flex;align-items:center;gap:6px"><input type="number" value="${s.duration_min}" data-f="duration_min" data-id="${s.id}" style="width:70px;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px"><span class="muted" style="font-size:.8rem">min</span></div>
-            <div style="display:flex;align-items:center;gap:6px"><span class="muted">${money('')}</span><input type="number" step="0.5" value="${s.price}" data-f="price" data-id="${s.id}" style="width:80px;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px"></div>
-            <button class="mini" data-delsvc="${s.id}" style="border:1px solid var(--card-line);border-radius:4px;padding:8px 12px;color:#ff8e8e">Delete</button>
-          </div>
-          <label class="muted" style="font-size:.78rem;display:block;margin-bottom:6px">Description (shown on the site and used by the chatbot)</label>
-          <textarea data-f="description" data-id="${s.id}" rows="2" style="width:100%;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px;font-family:inherit;resize:vertical;">${esc(s.description || '')}</textarea>
+        <div class="card" style="padding:16px;margin-bottom:10px;display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:10px;align-items:center">
+          <input value="${esc(s.name)}" data-f="name" data-id="${s.id}" style="background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px">
+          <div style="display:flex;align-items:center;gap:6px"><input type="number" value="${s.duration_min}" data-f="duration_min" data-id="${s.id}" style="width:70px;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px"><span class="muted" style="font-size:.8rem">min</span></div>
+          <div style="display:flex;align-items:center;gap:6px"><span class="muted">${money('')}</span><input type="number" step="0.5" value="${s.price}" data-f="price" data-id="${s.id}" style="width:80px;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px"></div>
+          <button class="mini" data-delsvc="${s.id}" style="border:1px solid var(--card-line);border-radius:4px;padding:8px 12px;color:#ff8e8e">Delete</button>
         </div>`).join('')}</div>
       <h3 style="font-size:1.1rem;margin:26px 0 12px">Add a service</h3>
-      <div class="card">
-        <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:10px;align-items:center;margin-bottom:10px;">
-          <input id="nsName" placeholder="Name" style="background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px">
-          <input id="nsDur" type="number" placeholder="min" style="background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px">
-          <input id="nsPrice" type="number" step="0.5" placeholder="price" style="background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px">
-          <button class="btn btn-gold" id="nsAdd" style="padding:10px 16px">Add</button>
-        </div>
-        <textarea id="nsDesc" placeholder="Description (optional)" rows="2" style="width:100%;background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px;font-family:inherit;resize:vertical;"></textarea>
+      <div class="card" style="display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:10px;align-items:center">
+        <input id="nsName" placeholder="Name" style="background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px">
+        <input id="nsDur" type="number" placeholder="min" style="background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px">
+        <input id="nsPrice" type="number" step="0.5" placeholder="price" style="background:#0e0e0e;border:1px solid var(--card-line);border-radius:3px;color:var(--text);padding:9px">
+        <button class="btn btn-gold" id="nsAdd" style="padding:10px 16px">Add</button>
       </div>
       <p class="muted" style="font-size:.82rem;margin-top:12px">Edits save automatically when you click away from a field.</p>`;
 
     document.querySelectorAll('[data-f]').forEach(inp => inp.onchange = async () => {
-      const val = inp.dataset.f === 'name' || inp.dataset.f === 'description' ? inp.value : Number(inp.value);
+      const val = inp.dataset.f === 'name' ? inp.value : Number(inp.value);
       await api(`/api/admin/services/${inp.dataset.id}`, { method: 'PATCH', body: JSON.stringify({ [inp.dataset.f]: val }) });
     });
     document.querySelectorAll('[data-delsvc]').forEach(b => b.onclick = async () => { if (confirm('Delete this service?')) { await api(`/api/admin/services/${b.dataset.delsvc}`, { method: 'DELETE' }); renderServices(); } });
     $('#nsAdd').onclick = async () => {
-      const p = { name: $('#nsName').value.trim(), duration_min: Number($('#nsDur').value), price: Number($('#nsPrice').value), description: $('#nsDesc').value.trim() };
+      const p = { name: $('#nsName').value.trim(), duration_min: Number($('#nsDur').value), price: Number($('#nsPrice').value) };
       if (!p.name || !p.duration_min || !p.price) return alert('Fill in name, duration and price.');
       await api('/api/admin/services', { method: 'POST', body: JSON.stringify(p) }); renderServices();
     };
@@ -470,6 +463,10 @@ document.addEventListener('na:ready', () => {
         ${ta('set_location_message', 'Location message', s.location_message, 'Sent as {location} inside the confirmation.')}
         ${ta('set_reminder_message', '30-day return reminder', s.reminder_message, 'Placeholders: {name} {business}')}
       </div>
+      <h3 style="font-size:1.2rem;margin-bottom:14px">Marketing &amp; tracking</h3>
+      <div class="card" style="margin-bottom:20px">
+        ${f('set_facebook_pixel_id', 'Facebook Pixel ID', s.facebook_pixel_id, 'From Meta Events Manager. Leave blank to disable. Fires automatically on every page, plus a real booking-confirmed event.')}
+      </div>
       <div class="form-msg ok" id="setMsg"></div>
       <button class="btn btn-gold" id="setSave">Save settings</button>
 
@@ -481,7 +478,7 @@ document.addEventListener('na:ready', () => {
         <button class="btn btn-ghost" id="pwSave">Update password</button>
       </div>`;
     $('#setSave').onclick = async () => {
-      const keys = ['business_name', 'general_area', 'whatsapp_number', 'currency_symbol', 'slot_interval_min', 'booking_lead_min', 'confirmation_message', 'location_message', 'reminder_message'];
+      const keys = ['business_name', 'general_area', 'whatsapp_number', 'currency_symbol', 'slot_interval_min', 'booking_lead_min', 'confirmation_message', 'location_message', 'reminder_message', 'facebook_pixel_id'];
       const body = {}; keys.forEach(k => body[k] = $('#set_' + k).value);
       await api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify(body) });
       $('#setMsg').textContent = 'Saved.'; setTimeout(() => $('#setMsg').textContent = '', 2500);

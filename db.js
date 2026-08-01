@@ -143,6 +143,7 @@ function seed() {
     s.run('business_name', 'Navalha & Co');
     s.run('general_area', 'Centro / Downtown district');
     s.run('whatsapp_number', ''); // e.g. 15550102030  (digits only, with country code)
+    s.run('facebook_pixel_id', ''); // Meta Pixel ID, from Events Manager — leave blank to disable
     s.run('currency_symbol', '$');
     s.run('slot_interval_min', '30'); // grid granularity for start times
     s.run('booking_lead_min', '60');  // earliest bookable time from "now", in minutes

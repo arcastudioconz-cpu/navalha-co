@@ -147,6 +147,12 @@ document.addEventListener('na:ready', () => {
       if (!r.ok) { alert(data.error || 'Could not confirm. Please try another time.'); btn.disabled = false; btn.textContent = 'Confirm Appointment'; if (r.status === 409) setStep(5); return; }
       $('#waPreview').textContent = data.whatsapp_text || '';
       $('#waOpen').href = data.whatsapp_url || '#';
+      const confirmedSvc = svc(b.service);
+      window.NA.trackPixelEvent('Schedule', {
+        content_name: confirmedSvc ? confirmedSvc.name : undefined,
+        value: confirmedSvc ? confirmedSvc.price : undefined,
+        currency: 'NZD'
+      });
       setStep(7);
     } catch {
       alert('Network error. Please try again.');
