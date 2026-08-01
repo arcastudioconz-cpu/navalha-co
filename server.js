@@ -194,10 +194,10 @@ const createBooking = db.transaction((data) => {
   const times = availableTimes(data.date, svc.duration_min);
   if (!times.includes(data.time)) throw { status: 409, msg: 'That time is no longer available. Please pick another.' };
   const info = db.prepare(`INSERT INTO appointments
-    (customer_name,phone,service_id,service_name,style,notes,appointment_date,appointment_time,duration_min,price,status)
-    VALUES (?,?,?,?,?,?,?,?,?,?, 'confirmed')`).run(
+    (customer_name,phone,service_id,service_name,style,notes,appointment_date,appointment_time,duration_min,price,status,session_id)
+    VALUES (?,?,?,?,?,?,?,?,?,?, 'confirmed',?)`).run(
       data.name, data.phone, svc.id, svc.name, data.style || '', data.notes || '',
-      data.date, data.time, svc.duration_min, svc.price);
+      data.date, data.time, svc.duration_min, svc.price, data.session_id || '');
   return { id: info.lastInsertRowid, service: svc };
 });
 
@@ -224,7 +224,8 @@ app.post('/api/bookings', (req, res) => {
   try {
     const result = createBooking({
       name: name.trim(), phone: phone.trim(), service_id,
-      style: req.body.style, notes: req.body.notes, date, time
+      style: req.body.style, notes: req.body.notes, date, time,
+      session_id: req.body.session_id
     });
     const wa = buildWhatsApp(name.trim(), date, time, result.service.name);
     require('./whatsapp').send(phone, wa.text).catch(() => {});
@@ -261,6 +262,20 @@ app.post('/api/newsletter', (req, res) => {
 });
 
 // ------------------------------------------------------------------
+// SITE ANALYTICS (first-party, no cookies-consent banner needed —
+// only an anonymous session id is ever recorded)
+// ------------------------------------------------------------------
+app.post('/api/track', (req, res) => {
+  const { session_id, page_url, referrer } = req.body || {};
+  if (!session_id) return res.status(400).json({ error: 'session_id required' });
+  try {
+    db.prepare('INSERT INTO site_events (session_id,event_type,page_url,referrer) VALUES (?,?,?,?)')
+      .run(String(session_id).slice(0, 64), 'pageview', (page_url || '').slice(0, 500), (referrer || '').slice(0, 500));
+    res.json({ ok: true });
+  } catch { res.status(500).json({ error: 'tracking failed' }); }
+});
+
+// ------------------------------------------------------------------
 // ADMIN AUTH
 // ------------------------------------------------------------------
 app.post('/api/admin/login', (req, res) => {
@@ -294,6 +309,61 @@ app.get('/api/admin/appointments', requireAdmin, (req, res) => {
   sql += ' ORDER BY appointment_date, appointment_time';
   res.json(db.prepare(sql).all(...params));
 });
+
+// ------------------------------------------------------------------
+// ANALYTICS — for the case study: real visitor, conversion, and
+// retention numbers, not estimates. days=0 means "all time".
+// ------------------------------------------------------------------
+app.get('/api/admin/analytics', requireAdmin, (req, res) => {
+  const days = parseInt(req.query.days, 10) || 30;
+  const since = days > 0 ? `datetime('now','-${days} days')` : `'1970-01-01'`;
+
+  const visitors = db.prepare(`SELECT COUNT(DISTINCT session_id) c FROM site_events WHERE event_type='pageview' AND created_at >= ${since}`).get().c;
+  const pageviews = db.prepare(`SELECT COUNT(*) c FROM site_events WHERE event_type='pageview' AND created_at >= ${since}`).get().c;
+  const bookings = db.prepare(`SELECT COUNT(*) c FROM appointments WHERE created_at >= ${since} AND status != 'cancelled'`).get().c;
+
+  // Conversion rate: of the sessions we actually tracked, how many went
+  // on to book — only counts bookings whose session_id matches a real
+  // tracked session, so this stays an honest visitor-to-booking rate.
+  const convertedSessions = db.prepare(`
+    SELECT COUNT(DISTINCT a.session_id) c FROM appointments a
+    WHERE a.session_id != '' AND a.created_at >= ${since} AND a.status != 'cancelled'
+      AND EXISTS (SELECT 1 FROM site_events se WHERE se.session_id = a.session_id)
+  `).get().c;
+  const conversionRate = visitors > 0 ? Math.round((convertedSessions / visitors) * 1000) / 10 : null;
+
+  // Retention: of everyone who has ever booked (all-time, not scoped to
+  // the days filter — repeat behaviour needs the full history to mean
+  // anything), what share came back for a 2nd+ visit.
+  const customerCounts = db.prepare(`
+    SELECT phone, COUNT(*) n FROM appointments WHERE status != 'cancelled' GROUP BY phone
+  `).all();
+  const totalCustomers = customerCounts.length;
+  const repeatCustomers = customerCounts.filter(c => c.n > 1).length;
+  const retentionRate = totalCustomers > 0 ? Math.round((repeatCustomers / totalCustomers) * 1000) / 10 : null;
+
+  // Monthly trend — visitors and bookings side by side, so the case
+  // study can show real month-over-month growth, not just a snapshot.
+  const monthlyVisitors = db.prepare(`
+    SELECT strftime('%Y-%m', created_at) month, COUNT(DISTINCT session_id) visitors
+    FROM site_events WHERE event_type='pageview' GROUP BY month ORDER BY month
+  `).all();
+  const monthlyBookings = db.prepare(`
+    SELECT strftime('%Y-%m', created_at) month, COUNT(*) bookings
+    FROM appointments WHERE status != 'cancelled' GROUP BY month ORDER BY month
+  `).all();
+
+  res.json({
+    days, visitors, pageviews, bookings,
+    conversion_rate: conversionRate,
+    retention_rate: retentionRate,
+    total_customers: totalCustomers,
+    repeat_customers: repeatCustomers,
+    monthly_visitors: monthlyVisitors,
+    monthly_bookings: monthlyBookings
+  });
+});
+
 app.patch('/api/admin/appointments/:id', requireAdmin, (req, res) => {
   const { status, customer_name, phone, service_id, style, notes, date, time } = req.body || {};
   const id = req.params.id;

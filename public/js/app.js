@@ -181,8 +181,31 @@
     async services() { try { return await (await fetch('/api/services')).json(); } catch { return []; } },
     async reviews() { try { return await (await fetch('/api/reviews')).json(); } catch { return []; } },
     async gallery() { try { return await (await fetch('/api/gallery')).json(); } catch { return []; } },
-    initFaq, trackPixelEvent
+    initFaq, trackPixelEvent, getSessionId: getOrCreateSessionId
   };
+
+  /* ---------- Site analytics (first-party, anonymous) ---------- */
+  function getOrCreateSessionId() {
+    const match = document.cookie.match(/(?:^|; )na_sid=([^;]*)/);
+    if (match) return decodeURIComponent(match[1]);
+    const id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+    const expires = new Date(Date.now() + 30 * 60 * 1000).toUTCString(); // 30 min session
+    document.cookie = `na_sid=${id};expires=${expires};path=/;SameSite=Lax`;
+    return id;
+  }
+
+  function trackPageview() {
+    const sessionId = getOrCreateSessionId();
+    fetch('/api/track', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, page_url: location.href, referrer: document.referrer }),
+      keepalive: true
+    }).catch(() => {});
+    return sessionId;
+  }
 
   /* ---------- Facebook Pixel ---------- */
   // Loads Meta's base Pixel code and fires the standard PageView event
@@ -255,6 +278,7 @@
     buildFooter();
     buildWidgets();
     initFacebookPixel();
+    trackPageview();
     // wire any WhatsApp CTAs on the page
     $all('[data-wa]').forEach(el => el.addEventListener('click', e => {
       e.preventDefault(); window.open(waLink(el.dataset.wa || ''), '_blank');

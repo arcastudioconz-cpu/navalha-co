@@ -74,6 +74,17 @@ CREATE TABLE IF NOT EXISTS appointments (
 );
 CREATE INDEX IF NOT EXISTS idx_appt_date ON appointments(appointment_date, status);
 
+CREATE TABLE IF NOT EXISTS site_events (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id   TEXT NOT NULL,
+  event_type   TEXT NOT NULL,               -- 'pageview'
+  page_url     TEXT DEFAULT '',
+  referrer     TEXT DEFAULT '',
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_site_events_session ON site_events(session_id);
+CREATE INDEX IF NOT EXISTS idx_site_events_created ON site_events(created_at);
+
 CREATE TABLE IF NOT EXISTS newsletter_subscribers (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   full_name     TEXT NOT NULL,
@@ -131,6 +142,14 @@ CREATE TABLE IF NOT EXISTS products (
   active      INTEGER NOT NULL DEFAULT 0
 );
 `);
+
+// Adding a column to a table that may already exist live (unlike a
+// fresh CREATE TABLE, this can't use IF NOT EXISTS) — ties a booking
+// back to the browsing session that produced it, so conversion rate
+// can be calculated later. Safe to run every startup: SQLite throws if
+// the column's already there, so that specific error is just ignored.
+try { db.exec(`ALTER TABLE appointments ADD COLUMN session_id TEXT DEFAULT ''`); }
+catch (err) { if (!/duplicate column/i.test(err.message)) throw err; }
 
 // ------------------------------------------------------------------
 // Seed defaults on first run only

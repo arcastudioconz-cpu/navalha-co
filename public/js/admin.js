@@ -35,7 +35,7 @@ document.addEventListener('na:ready', () => {
 
   /* ---------- DASHBOARD SHELL ---------- */
   const TABS = [['today', 'Today'], ['appointments', 'Appointments'], ['availability', 'Availability'],
-  ['services', 'Services'], ['gallery', 'Gallery'], ['newsletter', 'Newsletter'], ['reviews', 'Reviews'], ['settings', 'Settings']];
+  ['services', 'Services'], ['gallery', 'Gallery'], ['analytics', 'Analytics'], ['newsletter', 'Newsletter'], ['reviews', 'Reviews'], ['settings', 'Settings']];
 
   function dashboard(active = 'today') {
     app.innerHTML = `
@@ -59,7 +59,7 @@ document.addEventListener('na:ready', () => {
       b.style.color = on ? 'var(--gold-light)' : 'var(--muted)';
     });
     ({ today: renderToday, appointments: renderAppointments, availability: renderAvailability,
-       services: renderServices, gallery: renderGallery, newsletter: renderNewsletter, reviews: renderReviews, settings: renderSettings }[tab])();
+       services: renderServices, gallery: renderGallery, analytics: renderAnalytics, newsletter: renderNewsletter, reviews: renderReviews, settings: renderSettings }[tab])();
   }
   const panel = () => $('#panel');
   const stat = (v, l) => `<div class="card" style="padding:20px"><div style="font-family:var(--font-display);font-size:2rem;color:var(--gold)">${v}</div><div class="muted" style="font-size:.68rem;letter-spacing:.14em;text-transform:uppercase">${l}</div></div>`;
@@ -438,6 +438,56 @@ document.addEventListener('na:ready', () => {
       if (!p.name || !p.text) return alert('Name and review text are required.');
       await api('/api/admin/reviews', { method: 'POST', body: JSON.stringify(p) }); renderReviews();
     };
+  }
+
+  /* ---------- ANALYTICS ---------- */
+  async function renderAnalytics(days = 30) {
+    const d = await (await api(`/api/admin/analytics?days=${days}`)).json();
+    const periodLabel = days === 0 ? 'All time' : `Last ${days} days`;
+    panel().innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;margin-bottom:18px">
+        <h3 style="font-size:1.2rem">Analytics \u2014 ${periodLabel}</h3>
+        <div style="display:flex;gap:8px">
+          <button class="mini" data-period="30" style="border:1px solid var(--card-line);border-radius:4px;padding:6px 12px;${days===30?'color:var(--gold-light);border-color:var(--gold)':''}">30 days</button>
+          <button class="mini" data-period="90" style="border:1px solid var(--card-line);border-radius:4px;padding:6px 12px;${days===90?'color:var(--gold-light);border-color:var(--gold)':''}">90 days</button>
+          <button class="mini" data-period="0" style="border:1px solid var(--card-line);border-radius:4px;padding:6px 12px;${days===0?'color:var(--gold-light);border-color:var(--gold)':''}">All time</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px">
+        ${stat(d.visitors, 'Visitors')}
+        ${stat(d.pageviews, 'Pageviews')}
+        ${stat(d.bookings, 'Bookings')}
+        ${stat(d.conversion_rate !== null ? d.conversion_rate + '%' : '\u2014', 'Conversion Rate')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:28px">
+        ${stat(d.retention_rate !== null ? d.retention_rate + '%' : '\u2014', 'Retention Rate (all-time)')}
+        ${stat(d.total_customers, 'Total Customers')}
+        ${stat(d.repeat_customers, 'Repeat Customers')}
+      </div>
+      <h3 style="font-size:1.1rem;margin-bottom:12px">Monthly trend</h3>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="text-align:left;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
+            <th style="padding:12px 16px">Month</th><th style="padding:12px 16px">Visitors</th><th style="padding:12px 16px">Bookings</th>
+          </tr></thead>
+          <tbody>
+            ${mergeMonthly(d.monthly_visitors, d.monthly_bookings).map(row => `
+              <tr style="border-top:1px solid var(--card-line)">
+                <td style="padding:12px 16px">${row.month}</td>
+                <td style="padding:12px 16px">${row.visitors}</td>
+                <td style="padding:12px 16px">${row.bookings}</td>
+              </tr>`).join('') || `<tr><td style="padding:16px" colspan="3" class="muted">No data yet \u2014 numbers build up as real visitors and bookings come in.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+      <p class="muted" style="font-size:.76rem;margin-top:14px">Conversion rate only counts visitors whose browsing session is actually on record \u2014 an honest visitor-to-booking rate, not an estimate. Retention rate is calculated across your full booking history, not just this period, since repeat behaviour needs the whole picture to mean anything.</p>`;
+    document.querySelectorAll('[data-period]').forEach(b => b.onclick = () => renderAnalytics(+b.dataset.period));
+  }
+  function mergeMonthly(visitorsArr, bookingsArr) {
+    const map = {};
+    visitorsArr.forEach(v => { map[v.month] = map[v.month] || { month: v.month, visitors: 0, bookings: 0 }; map[v.month].visitors = v.visitors; });
+    bookingsArr.forEach(b => { map[b.month] = map[b.month] || { month: b.month, visitors: 0, bookings: 0 }; map[b.month].bookings = b.bookings; });
+    return Object.values(map).sort((a, b) => a.month.localeCompare(b.month));
   }
 
   /* ---------- SETTINGS ---------- */

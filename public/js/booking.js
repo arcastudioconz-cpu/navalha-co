@@ -141,7 +141,7 @@ document.addEventListener('na:ready', () => {
     try {
       const r = await fetch('/api/bookings', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: b.name, phone: b.phone, service_id: b.service, style: b.style, notes: b.notes, date: b.date, time: b.time })
+        body: JSON.stringify({ name: b.name, phone: b.phone, service_id: b.service, style: b.style, notes: b.notes, date: b.date, time: b.time, session_id: window.NA.getSessionId() })
       });
       const data = await r.json();
       if (!r.ok) { alert(data.error || 'Could not confirm. Please try another time.'); btn.disabled = false; btn.textContent = 'Confirm Appointment'; if (r.status === 409) setStep(5); return; }
