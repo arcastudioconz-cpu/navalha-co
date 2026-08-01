@@ -208,26 +208,11 @@
   }
 
   /* ---------- Facebook Pixel ---------- */
-  // Loads Meta's base Pixel code and fires the standard PageView event
-  // on every page, only if Eduardo has actually set a Pixel ID in
-  // Settings — completely inert otherwise. trackPixelEvent() is exposed
-  // on window.NA so other page scripts (like the booking flow) can fire
-  // real conversion events, e.g. once a booking is actually confirmed.
-  function initFacebookPixel() {
-    if (!SITE.pixelId || window.fbq) return;
-    !function (f, b, e, v, n, t, s) {
-      if (f.fbq) return; n = f.fbq = function () {
-        n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments)
-      };
-      if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0';
-      n.queue = []; t = b.createElement(e); t.async = !0;
-      t.src = v; s = b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t, s)
-    }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', SITE.pixelId);
-    fbq('track', 'PageView');
-  }
-
+  // The base Pixel (fbq init + PageView) now loads statically in every
+  // page's <head> directly — required for Meta's domain verification to
+  // reliably detect it, per Eduardo's setup. This helper just fires
+  // additional conversion events against that already-loaded fbq, e.g.
+  // once a booking is actually confirmed.
   function trackPixelEvent(eventName, params) {
     if (window.fbq) fbq('track', eventName, params || {});
   }
@@ -277,7 +262,6 @@
     await loadSettings();
     buildFooter();
     buildWidgets();
-    initFacebookPixel();
     trackPageview();
     // wire any WhatsApp CTAs on the page
     $all('[data-wa]').forEach(el => el.addEventListener('click', e => {
