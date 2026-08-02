@@ -9,7 +9,8 @@ document.addEventListener('na:ready', () => {
   const state = {
     step: 1, services: [],
     booking: { name: '', phone: '', service: null, style: null, notes: '', date: null, time: null },
-    calY: new Date().getFullYear(), calM: new Date().getMonth(), openDays: new Set()
+    calY: new Date().getFullYear(), calM: new Date().getMonth(), openDays: new Set(),
+    startedTracked: false
   };
 
   $('#stepsBar').innerHTML = Array.from({ length: STEPS - 1 }, () => '<i></i>').join('');
@@ -49,6 +50,10 @@ document.addEventListener('na:ready', () => {
       b.name = $('#bkName').value.trim(); b.phone = $('#bkPhone').value.trim();
       if (b.name.length < 2) { flash('#bkName', 'Please enter your name'); return false; }
       if (b.phone.replace(/\D/g, '').length < 7) { flash('#bkPhone', 'Enter a valid WhatsApp number'); return false; }
+      if (!state.startedTracked && window.ARCA) {
+        state.startedTracked = true;
+        window.ARCA.trackProcessStarted({ name: b.name, phone: b.phone }).catch(() => {});
+      }
     }
     if (n === 2 && !b.service) { alert('Please select a service.'); return false; }
     if (n === 3) { b.notes = $('#bkNotes').value.trim(); if (!b.style) { alert('Please choose a style, or pick "Other".'); return false; } }
@@ -154,6 +159,7 @@ document.addEventListener('na:ready', () => {
         currency: 'NZD'
       });
       if (window.ARCA) window.ARCA.trackConversion().catch(() => {});
+      if (window.ARCA) window.ARCA.trackProcessCompleted({ phone: b.phone }).catch(() => {});
       setStep(7);
     } catch {
       alert('Network error. Please try again.');
