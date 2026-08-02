@@ -104,6 +104,7 @@
 
     $('#waFloat').addEventListener('click', () => window.open(waLink(), '_blank'));
     loadArcaWidget();
+    loadArcaTracking();
     initPopup();
   }
 
@@ -113,6 +114,21 @@
     const s = document.createElement('script');
     s.id = 'arcaWidgetScript';
     s.src = 'https://arca-chatbot-production.up.railway.app/widget/widget.js';
+    s.setAttribute('data-api-key', 'arcabot_live_400236004daa78e76b002604cf68718695a1018aa659e7e739618131563f6d63');
+    document.body.appendChild(s);
+  }
+
+  /* ---------- ARCA UNIVERSAL TRACKING ---------- */
+  // Reports real visitor/subscriber/conversion activity into ARCA's own
+  // dashboard and Client Portfolio view — same system a WordPress
+  // client gets via the plugin suite, here wired in directly since this
+  // is a custom-built site. Runs alongside Navalha's own systems, not
+  // instead of them.
+  function loadArcaTracking() {
+    if (document.getElementById('arcaTrackingScript')) return;
+    const s = document.createElement('script');
+    s.id = 'arcaTrackingScript';
+    s.src = 'https://arca-chatbot-production.up.railway.app/arca-connect.js';
     s.setAttribute('data-api-key', 'arcabot_live_400236004daa78e76b002604cf68718695a1018aa659e7e739618131563f6d63');
     document.body.appendChild(s);
   }
@@ -147,6 +163,9 @@
         $('#popupForm').style.display = 'none';
         $('#popupSuccess').style.display = 'block';
         setTimeout(() => overlay.classList.remove('open'), 3200);
+        if (window.ARCA) {
+          window.ARCA.trackSubscriber({ email: payload.email, name: payload.full_name }).catch(() => {});
+        }
       } catch { msg.textContent = 'Network error. Please try again.'; }
     });
   }

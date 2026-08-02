@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<script src="https://arca-chatbot-production.up.railway.app/arca-connect.js" data-api-key="arcabot_live_400236004daa78e76b002604cf68718695a1018aa659e7e739618131563f6d63"></script>
 <!-- Facebook domain verification -->
 <meta name="facebook-domain-verification" content="2wtqt1jppxrvjbioapdi53ivil9l3p" />
 <!-- Meta Pixel Code — Navalha Pixel -->
@@ -124,6 +125,9 @@ src="https://www.facebook.com/tr?id=1716297929431936&ev=PageView&noscript=1"
         }
         document.getElementById('revForm').style.display = 'none';
         document.getElementById('revDone').style.display = 'block';
+        if (window.ARCA) {
+          window.ARCA.submitReview({ name: name, rating: rating, text: text, product_name: 'Navalha & Co' }).catch(function () {});
+        }
       })
       .catch(function () {
         msg.textContent = 'Network error. Please try again.';

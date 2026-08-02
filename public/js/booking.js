@@ -153,6 +153,7 @@ document.addEventListener('na:ready', () => {
         value: confirmedSvc ? confirmedSvc.price : undefined,
         currency: 'NZD'
       });
+      if (window.ARCA) window.ARCA.trackConversion().catch(() => {});
       setStep(7);
     } catch {
       alert('Network error. Please try again.');
